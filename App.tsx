@@ -24,7 +24,9 @@ import {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import {
   Accuracy,
+  getForegroundPermissionsAsync,
   hasServicesEnabledAsync,
+  LocationPermissionResponse,
   PermissionStatus as LocationPermissionStatus,
   requestForegroundPermissionsAsync,
   useForegroundPermissions,
@@ -79,10 +81,21 @@ export default function App() {
 
   const url = ExpoLinking.useURL();
 
-  const [locationPermission] = useForegroundPermissions({
-    get: true,
-    request: true,
-  });
+  const [locationPermission, setLocationPermission] =
+    useState<LocationPermissionResponse | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      setLocationPermission(await getForegroundPermissionsAsync());
+      setLocationPermission(await requestForegroundPermissionsAsync());
+    })();
+  }, []);
+
+  // requestForegroundPermissionsAsync may sometimes get stuck on Android when the permission has already been granted before
+  // const [locationPermission] = useForegroundPermissions({
+  //   get: true,
+  //   request: true,
+  // });
 
   const [trackingPermission] = useTrackingPermissions({
     get: true,
