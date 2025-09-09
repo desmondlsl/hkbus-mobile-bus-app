@@ -1,4 +1,8 @@
 {
-    "CFBundleDisplayName": "hkbus.app",
-    "app_name": "hkbus.app"
+    "ios": {
+        "CFBundleDisplayName": "hkbus.app"
+    },
+    "android": {
+        "app_name": "hkbus.app"
+    }
 }

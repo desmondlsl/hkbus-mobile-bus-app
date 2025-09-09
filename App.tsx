@@ -18,7 +18,6 @@ import {
   StyleSheet,
   Share,
   ToastAndroid,
-  View,
   useColorScheme,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -79,7 +78,7 @@ export default function App() {
     "light" | "dark"
   >(systemColorScheme || "dark");
 
-  const url = ExpoLinking.useURL();
+  const url = ExpoLinking.useLinkingURL();
 
   const [locationPermission, setLocationPermission] =
     useState<LocationPermissionResponse | null>(null);
@@ -106,59 +105,57 @@ export default function App() {
     "granted" | "closed" | null
   >(null);
 
-  const [webViewUrlState, setWebViewUrl] = useState<string>("");
-  const [readyToExitState, setReadyToExit] = useState(false);
+  const webViewUrl = useRef<string>("");
+  const readyToExit = useRef<Boolean>(false)
 
   const webViewRef = useRef<WebView>(null);
   const handlerRef = useRef<NativeEventSubscription>(null);
-
-  const onAndroidBackPress = useCallback(() => {
-    if (webViewRef.current) {
-      const url = new URL(webViewUrlState);
-      if (
-        url.pathname === "/" ||
-        url.pathname === "/zh" ||
-        url.pathname === "/en"
-      ) {
-        // Pressing back on the home page, trying to close the app
-        if (readyToExitState) {
-          // Back already pressed recently, exiting
-          BackHandler.exitApp();
-        } else {
-          // Back pressed for the first time, show confirmation
-          ToastAndroid.show("Press back again to exit", ToastAndroid.SHORT);
-          setReadyToExit(true);
-          // Allow 5 seconds for the user to press back again
-          setTimeout(() => {
-            setReadyToExit(false);
-          }, 5000);
-        }
-        return true;
-      } else {
-        // Not on the home page, go back
-        webViewRef.current.goBack();
-      }
-      return true;
-    }
-    return false;
-  }, [webViewRef.current, webViewUrlState, readyToExitState]);
 
   // Handle Back press behaviour
   useEffect(() => {
     if (Platform.OS === "android") {
       handlerRef.current?.remove();
+      console.log("Heisenbug, adding the console.log make it works")
       handlerRef.current = BackHandler.addEventListener(
         "hardwareBackPress",
-        onAndroidBackPress
+        () => {
+          console.log("Heisenbug, adding the console.log make it works")
+          if (webViewRef.current) {
+            const url = new URL(webViewUrl.current);
+            if (["/", "/zh", "/en"].includes(url.pathname)) {
+              // Pressing back on the home page, trying to close the app
+              if (readyToExit.current) {
+                // Back already pressed recently, exiting
+                BackHandler.exitApp();
+              } else {
+                // Back pressed for the first time, show confirmation
+                ToastAndroid.show("Press back again to exit", ToastAndroid.SHORT);
+                readyToExit.current = true
+                // Allow 5 seconds for the user to press back again
+                setTimeout(() => {
+                  readyToExit.current = false
+                }, 5000);
+              }
+            } else {
+              // Not on the home page, go back
+              webViewRef.current.goBack();
+            }
+            return true;
+          }
+          return false;
+        }
       );
+      return () => {
+        handlerRef.current?.remove()
+      }
     }
-  }, [onAndroidBackPress]);
+  }, []);
 
-  const handleWebViewNavigationStateChange = (
+  const handleWebViewNavigationStateChange = useCallback((
     newNavState: WebViewNavigation
   ) => {
-    setWebViewUrl(newNavState.url);
-  };
+    webViewUrl.current = newNavState.url;
+  }, []);
 
   useEffect(() => {
     let headingSubscription = { remove: () => {} };
@@ -383,7 +380,6 @@ export default function App() {
   }
 
   const uri = url?.startsWith("https://hkbus.app") ? url : "https://hkbus.app/";
-  // const uri = "http://localhost"
 
   return (
     <>

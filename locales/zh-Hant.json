@@ -1,4 +1,8 @@
 {
-    "CFBundleDisplayName": "巴士預報",
-    "app_name": "巴士預報"
+    "ios": {
+        "CFBundleDisplayName": "巴士預報"
+    },
+    "android": {
+        "app_name": "巴士預報"
+    }
 }
