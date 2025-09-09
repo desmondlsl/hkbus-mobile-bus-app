@@ -6,7 +6,7 @@ module.exports = ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: '巴士到站預報 - hkbus.app',
     slug: 'hkbus', // Replace with your app's slug
-    version: '2.9.8', // Your app's version
+    version: '2.9.9', // Your app's version
     orientation: 'portrait',
     icon: './assets/icon.png',
     updates: {
@@ -44,7 +44,7 @@ module.exports = ({ config }: ConfigContext): ExpoConfig => {
         'expo-build-properties',
         {
           android: {
-            targetSdkVersion: 34,
+            targetSdkVersion: 36,
             minSdkVersion: 24,
           }
         }
@@ -89,7 +89,7 @@ module.exports = ({ config }: ConfigContext): ExpoConfig => {
         backgroundColor: '#000000'
       },
       package: 'app.hkbus',
-      versionCode: 33,
+      versionCode: 34,
       intentFilters: [
         {
           action: 'VIEW',
@@ -99,7 +99,7 @@ module.exports = ({ config }: ConfigContext): ExpoConfig => {
               scheme: 'https',
               host: 'hkbus.app',
               pathPrefix: '/'
-            }
+            },
           ],
           category: [
             'BROWSABLE',
