@@ -44,8 +44,8 @@ module.exports = ({ config }: ConfigContext): ExpoConfig => {
         'expo-build-properties',
         {
           android: {
-            compileSdkVersion: 36,
-            targetSdkVersion: 36,
+            compileSdkVersion: 35,
+            targetSdkVersion: 35,
             minSdkVersion: 24,
           }
         }
@@ -90,7 +90,7 @@ module.exports = ({ config }: ConfigContext): ExpoConfig => {
         backgroundColor: '#000000'
       },
       package: 'app.hkbus',
-      versionCode: 40,
+      versionCode: 42,
       intentFilters: [
         {
           action: 'VIEW',
