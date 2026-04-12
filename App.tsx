@@ -22,6 +22,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import {
   Accuracy,
+  getCurrentPositionAsync,
   getForegroundPermissionsAsync,
   hasServicesEnabledAsync,
   LocationPermissionResponse,
@@ -159,6 +160,12 @@ export default function App() {
     ) {
       hasServicesEnabledAsync().then(enabled => {
         if (!enabled) return;
+        getCurrentPositionAsync({ accuracy: Accuracy.BestForNavigation })
+          .then(({ coords: { latitude, longitude } }) => {
+            webViewRef?.current?.postMessage(
+              JSON.stringify({ lat: latitude, lng: longitude, type: "location" })
+            );
+          });
         watchHeadingAsync(({ accuracy, trueHeading }) => {
           webViewRef?.current?.postMessage(
             JSON.stringify({
@@ -300,7 +307,7 @@ export default function App() {
   const runFirst = useMemo(
     () => `
     window.RnOs = "${Platform.OS}";
-    window.iOSRNWebView = ${Platform.OS === "ios"};
+    window.iOSRNWebView = true;
     window.stopAlarm = true;
     ${
       Platform.OS === "ios"
