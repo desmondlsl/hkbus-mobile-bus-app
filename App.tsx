@@ -28,7 +28,6 @@ import {
   LocationPermissionResponse,
   PermissionStatus as LocationPermissionStatus,
   requestForegroundPermissionsAsync,
-  useForegroundPermissions,
   watchHeadingAsync,
   watchPositionAsync,
 } from "expo-location";
@@ -307,7 +306,7 @@ export default function App() {
   const runFirst = useMemo(
     () => `
     window.RnOs = "${Platform.OS}";
-    window.iOSRNWebView = true;
+    window.iOSRNWebView = ${Platform.OS === 'ios'};
     window.stopAlarm = true;
     ${
       Platform.OS === "ios"
