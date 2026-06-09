@@ -15,11 +15,13 @@ import {
   Platform,
   StyleSheet,
   Share,
+  Text,
+  TouchableOpacity,
   ToastAndroid,
   useColorScheme,
+  View,
   Linking,
 } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import {
   Accuracy,
   getCurrentPositionAsync,
@@ -39,6 +41,7 @@ import {
   requestTrackingPermissionsAsync,
 } from "expo-tracking-transparency";
 import { postAlarmToWebView, toggleAlarm } from "./stopAlarm";
+import { AsyncConsent } from "./asyncAlert";
 import * as ExpoLinking from "expo-linking";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -72,7 +75,14 @@ const useAppIsInForeground = () => {
 
 export default function App() {
   const appIsInForeground = useAppIsInForeground();
-  const systemColorScheme = useColorScheme();
+  const rawColorScheme = useColorScheme();
+  // RN 0.85's useColorScheme() now returns 'light' | 'dark' | 'unspecified'
+  // (previously nullable). Normalize back to 'light' | 'dark' | null so the
+  // existing fallbacks and the value injected into the web app behave as before.
+  const systemColorScheme =
+    rawColorScheme === "light" || rawColorScheme === "dark"
+      ? rawColorScheme
+      : null;
   const [webAppActualColorMode, setWebAppActualColorMode] = useState<
     "light" | "dark"
   >(systemColorScheme || "dark");
@@ -84,7 +94,38 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      setLocationPermission(await getForegroundPermissionsAsync());
+      const existing = await getForegroundPermissionsAsync();
+      if (existing.granted) {
+        setLocationPermission(existing);
+        return;
+      }
+      // Google Play's User Data policy requires a prominent disclosure shown
+      // BEFORE any location permission is requested. This app also uses
+      // background location (arrival reminder), so the disclosure states that
+      // location may be collected even when the app is closed or not in use.
+      if (Platform.OS === "android" && existing.canAskAgain) {
+        const consented = await AsyncConsent(
+          "位置資料使用 / Location data",
+          "「巴士到站預報」會使用你的位置資料，以顯示附近的巴士路線及車站，"
+            + "並可在你接近所選車站時提示到站，即使應用程式已關閉或沒有在使用中。"
+            + "位置資料只用於上述功能。\n\n"
+            + "hkbus.app collects location data to show nearby bus routes and stops, "
+            + "and to alert you when you are approaching your selected stop — even when "
+            + "the app is closed or not in use. Location is used only for these features.",
+          "允許 / Allow",
+          "不允許 / Don't allow",
+        );
+        if (!consented) {
+          // User declined the disclosure: do not request the permission. Load
+          // the app without location features.
+          setLocationPermission({
+            ...existing,
+            status: LocationPermissionStatus.DENIED,
+            granted: false,
+          });
+          return;
+        }
+      }
       setLocationPermission(await requestForegroundPermissionsAsync());
     })();
   }, []);
@@ -361,10 +402,10 @@ export default function App() {
     if (Platform.OS !== "android") {
       return;
     }
-    NavigationBar.setBackgroundColorAsync(
-      webAppActualColorMode === "light" ? "#FEDB00" : "black"
-    );
-    NavigationBar.setButtonStyleAsync(
+    // Under SDK 54+ mandatory edge-to-edge, the navigation bar is transparent
+    // and its background can no longer be set (the web app draws behind it via
+    // its own safe-area insets). Only the button/icon style is controllable.
+    NavigationBar.setStyle(
       webAppActualColorMode === "light" ? "dark" : "light"
     );
   }, [webAppActualColorMode]);
@@ -389,18 +430,73 @@ export default function App() {
               : "light"
             : "light"
         }
-        backgroundColor={
-          webAppActualColorMode === "light" ? "#FEDB00" : "black"
-        }
       />
-      <SafeAreaProvider>
-        <SafeAreaView style={styles.container}>
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor:
+              webAppActualColorMode === "light" ? "#FEDB00" : "#000",
+          },
+        ]}
+      >
           <WebView
             ref={webViewRef}
             style={styles.webview}
             source={{ uri }}
             cacheEnabled
             cacheMode="LOAD_CACHE_ELSE_NETWORK"
+            limitsNavigationsToAppBoundDomains={true}
+            renderError={(_domain, _code, desc) => (
+              <View
+                style={[
+                  styles.errorContainer,
+                  {
+                    backgroundColor:
+                      webAppActualColorMode === "light" ? "#FEDB00" : "#000",
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.errorTitle,
+                    { color: webAppActualColorMode === "light" ? "#000" : "#fff" },
+                  ]}
+                >
+                  未能連線 / Offline
+                </Text>
+                <Text
+                  style={[
+                    styles.errorText,
+                    { color: webAppActualColorMode === "light" ? "#000" : "#ccc" },
+                  ]}
+                >
+                  無法連接伺服器，請檢查網絡連線。{"\n"}
+                  Can't reach the server. Please check your connection.
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.retryButton,
+                    {
+                      backgroundColor:
+                        webAppActualColorMode === "light" ? "#000" : "#FEDB00",
+                    },
+                  ]}
+                  onPress={() => webViewRef.current?.reload()}
+                >
+                  <Text
+                    style={[
+                      styles.retryButtonText,
+                      {
+                        color: webAppActualColorMode === "light" ? "#FEDB00" : "#000",
+                      },
+                    ]}
+                  >
+                    重試 / Retry
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
             pullToRefreshEnabled
             onMessage={handleOnMessage}
             injectedJavaScriptBeforeContentLoaded={runFirst}
@@ -428,8 +524,7 @@ export default function App() {
             }}
             startInLoadingState
           />
-        </SafeAreaView>
-      </SafeAreaProvider>
+      </View>
     </>
   );
 }
@@ -449,5 +544,34 @@ const styles = StyleSheet.create({
     backgroundColor: "black",
     width: "100%",
     height: "100%",
+  },
+  errorContainer: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  errorText: {
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: "center",
+    marginBottom: 28,
+  },
+  retryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 24,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

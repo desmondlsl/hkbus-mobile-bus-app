@@ -6,7 +6,7 @@ module.exports = ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: '巴士到站預報 - hkbus.app',
     slug: 'hkbus', // Replace with your app's slug
-    version: '2.9.12', // Your app's version
+    version: '2.10.2', // Your app's version
     orientation: 'portrait',
     icon: './assets/icon.png',
     updates: {
@@ -44,8 +44,8 @@ module.exports = ({ config }: ConfigContext): ExpoConfig => {
         'expo-build-properties',
         {
           android: {
-            compileSdkVersion: 35,
-            targetSdkVersion: 35,
+            compileSdkVersion: 36,
+            targetSdkVersion: 36,
             minSdkVersion: 24,
           }
         }
@@ -76,13 +76,19 @@ module.exports = ({ config }: ConfigContext): ExpoConfig => {
         UIBackgroundModes: [
           'location',
           'remote-notification'
-        ]
+        ],
+        // Declaring hkbus.app as an app-bound domain lets WKWebView run the
+        // PWA's service worker, which caches the app shell for offline use.
+        WKAppBoundDomains: [
+          'hkbus.app'
+        ],
+        ITSAppUsesNonExemptEncryption: false,
       },
       appStoreUrl: 'https://apps.apple.com/hk/app/%E5%B7%B4%E5%A3%AB%E5%88%B0%E7%AB%99%E9%A0%90%E5%A0%B1-hkbus-app/id1612184906',
       associatedDomains: [
         'applinks:hkbus.app'
       ],
-      buildNumber: '19'
+      buildNumber: '22'
     },
     android: {
       adaptiveIcon: {
@@ -90,7 +96,7 @@ module.exports = ({ config }: ConfigContext): ExpoConfig => {
         backgroundColor: '#000000'
       },
       package: 'app.hkbus',
-      versionCode: 44,
+      versionCode: 48,
       intentFilters: [
         {
           action: 'VIEW',

@@ -10,11 +10,12 @@ import {
   stopLocationUpdatesAsync,
 } from "expo-location";
 import { Platform } from "react-native";
-import { AsyncAlert } from "./asyncAlert";
+import { AsyncAlert, AsyncConsent } from "./asyncAlert";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
@@ -38,10 +39,24 @@ const setStopAlarm = async () => {
   }
   
   const { status: bgStatus } = await getBackgroundPermissionsAsync();
-  
+
   if (bgStatus !== "granted") {
+    // Prominent disclosure + consent BEFORE requesting background location,
+    // as required by Google Play's User Data policy.
     if ( Platform.OS === 'android' ) {
-      await AsyncAlert('Background location permission is required for setting up the arrival reminder')
+      const consented = await AsyncConsent(
+        "背景位置存取 / Background location",
+        "「巴士到站預報」會收集你的位置資料，以便在你接近所選巴士站時提示到站，"
+          + "即使應用程式已關閉或沒有在使用中。此位置資料只用於到站提醒，不會用於其他用途。\n\n"
+          + "hkbus.app collects location data to alert you when you are approaching your "
+          + "selected bus stop, even when the app is closed or not in use. This location "
+          + "data is used only for the arrival reminder and nothing else.",
+        "允許 / Allow",
+        "不允許 / Don't allow",
+      );
+      if ( !consented ) {
+        return false;
+      }
     }
     const { status } = await requestBackgroundPermissionsAsync();
     if ( status !== "granted" ) {
@@ -78,7 +93,9 @@ export const toggleAlarm = async ({ stopId, title, body, lat, lng }: any) => {
   }
 };
 
-export const postAlarmToWebView = (webViewRef: React.RefObject<WebView>) => {
+export const postAlarmToWebView = (
+  webViewRef: React.RefObject<WebView | null>
+) => {
   webViewRef?.current?.postMessage(
     JSON.stringify({
       type: "stop-alarm-stop-id",
